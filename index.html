@@ -1,55 +1,57 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Ícones e manifest do PWA gerados pelo RealFaviconGenerator -->
+    <title>Panificadora Bacanga</title>
+
+    <!-- Ícones e Manifest -->
     <link rel="icon" type="image/png" href="/icons/favicon-48x48.png" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />
     <link rel="shortcut icon" href="/icons/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="Bacanga" />
     <link rel="manifest" href="/icons/site.webmanifest" />
-    
-    <!-- Título e estilo -->
+
+    <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
-    <title>Panificadora Bacanga</title>
 </head>
 <body>
+
     <h1>Panificadora Bacanga</h1>
-    <h2>Cadastro de Produtos</h2>
 
-    <!-- Formulário de cadastro de produto -->
-    <div>
-        <label for="productName">Nome do Produto:</label>
-        <input type="text" id="productName" placeholder="Digite o nome do produto">
-    </div>
-    <div>
-        <label for="barcode">Código de Barras:</label>
-        <input type="text" id="barcode" placeholder="Digite o código de barras">
-    </div>
-    <div>
-        <label for="reference">Referência:</label>
-        <input type="text" id="reference" placeholder="Digite a referência">
-    </div>
-    <div>
-        <label for="value">Valor:</label>
-        <input type="text" id="value" placeholder="Digite o valor">
-    </div>
-    <button id="addButton">Adicionar Produto</button>
+    <!-- Formulário de Cadastro -->
+    <div id="cadastro">
+        <h2>Cadastro</h2>
+        <form id="productForm">
+            <label for="productName">Nome do Produto:</label>
+            <input type="text" id="productName" name="productName" required><br>
 
-    <!-- Campo de pesquisa -->
-    <h2>Pesquise aqui</h2>
-    <input type="text" id="searchInput" placeholder="Digite o nome do produto para pesquisar">
-    <button id="searchButton">Pesquisar</button>
+            <label for="barcode">Código de Barras:</label>
+            <input type="text" id="barcode" name="barcode" required><br>
 
-    <!-- Tabela de produtos cadastrados -->
-    <h2>Produtos Cadastrados</h2>
+            <label for="reference">Referência:</label>
+            <input type="text" id="reference" name="reference" required><br>
+
+            <label for="price">Valor:</label>
+            <input type="number" id="price" name="price" required><br>
+
+            <button type="submit">Cadastrar Produto</button>
+        </form>
+    </div>
+
+    <!-- Área de Pesquisa -->
+    <div id="pesquisa">
+        <h2>Pesquisar Produto</h2>
+        <input type="text" id="searchInput" placeholder="Pesquise aqui">
+        <button id="searchButton">🔍 Pesquisar</button>
+    </div>
+
+    <!-- Tabela de Produtos Cadastrados -->
     <table id="productTable">
         <thead>
             <tr>
-                <th>Nome</th>
+                <th>Nome do Produto</th>
                 <th>Código de Barras</th>
                 <th>Referência</th>
                 <th>Valor</th>
@@ -57,16 +59,39 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Os produtos serão adicionados dinamicamente aqui -->
+            <!-- Produtos cadastrados serão inseridos aqui -->
         </tbody>
     </table>
 
-    <!-- Botão de Download do App -->
-    <h2>Baixar o Aplicativo</h2>
-    <button id="installButton" style="display: none;">Instalar App</button>
+    <!-- Botão para baixar o aplicativo -->
+    <button id="installButton" style="display: none;">Baixar App</button>
 
-    <script src="service-worker.js"></script>
+    <!-- Scripts -->
     <script>
+        let deferredPrompt;
+
+        // Lógica do PWA
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installButton').style.display = 'block';
+        });
+
+        document.getElementById('installButton').addEventListener('click', () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Usuário aceitou a instalação');
+                    } else {
+                        console.log('Usuário recusou a instalação');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
+
+        // Registro do Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/service-worker.js').then(function(registration) {
@@ -77,140 +102,84 @@
             });
         }
 
-        // Array para armazenar os produtos
-        let products = [];
+        // Função para adicionar um produto à tabela
+        const form = document.getElementById('productForm');
+        const productTable = document.getElementById('productTable').querySelector('tbody');
 
-        // Função para adicionar produto
-        document.getElementById('addButton').addEventListener('click', function() {
-            const name = document.getElementById('productName').value;
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const productName = document.getElementById('productName').value;
             const barcode = document.getElementById('barcode').value;
             const reference = document.getElementById('reference').value;
-            const value = document.getElementById('value').value;
+            const price = document.getElementById('price').value;
 
-            if (name && barcode && reference && value) {
-                const product = {
-                    name,
-                    barcode,
-                    reference,
-                    value
-                };
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${productName}</td>
+                <td>${barcode}</td>
+                <td>${reference}</td>
+                <td>${price}</td>
+                <td>
+                    <button class="editButton">Alterar</button>
+                    <button class="deleteButton">Excluir</button>
+                </td>
+            `;
+            productTable.appendChild(row);
 
-                products.push(product);
-                renderTable();
-                clearForm();
-            } else {
-                alert('Por favor, preencha todos os campos!');
-            }
+            // Limpar o formulário após adicionar
+            form.reset();
+
+            // Funções de alterar e excluir
+            row.querySelector('.editButton').addEventListener('click', function() {
+                editProduct(row);
+            });
+
+            row.querySelector('.deleteButton').addEventListener('click', function() {
+                deleteProduct(row);
+            });
         });
 
-        // Função para limpar o formulário
-        function clearForm() {
-            document.getElementById('productName').value = '';
-            document.getElementById('barcode').value = '';
-            document.getElementById('reference').value = '';
-            document.getElementById('value').value = '';
-        }
-
-        // Função para renderizar a tabela de produtos
-        function renderTable() {
-            const tbody = document.querySelector('#productTable tbody');
-            tbody.innerHTML = '';
-
-            products.forEach((product, index) => {
-                const row = document.createElement('tr');
-
-                row.innerHTML = `
-                    <td>${product.name}</td>
-                    <td>${product.barcode}</td>
-                    <td>${product.reference}</td>
-                    <td>${product.value}</td>
-                    <td>
-                        <button onclick="editProduct(${index})">Alterar</button>
-                        <button onclick="deleteProduct(${index})">Excluir</button>
-                    </td>
-                `;
-
-                tbody.appendChild(row);
-            });
-        }
-
         // Função para editar um produto
-        function editProduct(index) {
-            const product = products[index];
+        function editProduct(row) {
+            const productName = prompt('Alterar nome do produto:', row.cells[0].textContent);
+            const barcode = prompt('Alterar código de barras:', row.cells[1].textContent);
+            const reference = prompt('Alterar referência:', row.cells[2].textContent);
+            const price = prompt('Alterar valor:', row.cells[3].textContent);
 
-            document.getElementById('productName').value = product.name;
-            document.getElementById('barcode').value = product.barcode;
-            document.getElementById('reference').value = product.reference;
-            document.getElementById('value').value = product.value;
-
-            // Remover o produto antigo
-            products.splice(index, 1);
+            if (productName && barcode && reference && price) {
+                row.cells[0].textContent = productName;
+                row.cells[1].textContent = barcode;
+                row.cells[2].textContent = reference;
+                row.cells[3].textContent = price;
+            }
         }
 
         // Função para excluir um produto
-        function deleteProduct(index) {
+        function deleteProduct(row) {
             if (confirm('Tem certeza que deseja excluir este produto?')) {
-                products.splice(index, 1);
-                renderTable();
+                row.remove();
             }
         }
 
-        // Função para pesquisar um produto
-        document.getElementById('searchButton').addEventListener('click', function() {
-            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
-            const filteredProducts = products.filter(product => product.name.toLowerCase().includes(searchQuery));
+        // Função de pesquisa de produto
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
 
-            renderSearchResults(filteredProducts);
-        });
+        searchButton.addEventListener('click', function() {
+            const searchValue = searchInput.value.toLowerCase();
+            const rows = productTable.querySelectorAll('tr');
 
-        // Função para renderizar resultados da pesquisa
-        function renderSearchResults(products) {
-            const tbody = document.querySelector('#productTable tbody');
-            tbody.innerHTML = '';
-
-            products.forEach((product, index) => {
-                const row = document.createElement('tr');
-
-                row.innerHTML = `
-                    <td>${product.name}</td>
-                    <td>${product.barcode}</td>
-                    <td>${product.reference}</td>
-                    <td>${product.value}</td>
-                    <td>
-                        <button onclick="editProduct(${index})">Alterar</button>
-                        <button onclick="deleteProduct(${index})">Excluir</button>
-                    </td>
-                `;
-
-                tbody.appendChild(row);
+            rows.forEach(function(row) {
+                const productName = row.cells[0].textContent.toLowerCase();
+                if (productName.includes(searchValue)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
             });
-        }
-
-        // Botão para instalação do PWA
-        let deferredPrompt;
-        const installButton = document.getElementById('installButton');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installButton.style.display = 'block';
-
-            installButton.addEventListener('click', () => {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('Usuário aceitou instalar o PWA');
-                    } else {
-                        console.log('Usuário recusou instalar o PWA');
-                    }
-                    deferredPrompt = null;
-                });
-            });
-        });
-
-        window.addEventListener('appinstalled', (evt) => {
-            console.log('PWA instalado com sucesso');
         });
     </script>
+
 </body>
 </html>
